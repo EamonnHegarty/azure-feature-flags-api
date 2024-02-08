@@ -25,7 +25,7 @@ container = database.get_container_client(container_name)
 
 # this would be got from the azure secret for tenant so be tenant ID that way we can return the results for a tenant
 # so EU would have one set of configs/flags and so on
-tenant = "EU"
+tenant = os.getenv("TENANT")
 
 
 @app.get("/")
