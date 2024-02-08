@@ -3,14 +3,26 @@ import os
 from azure.cosmos import CosmosClient, exceptions
 from dotenv import load_dotenv
 from fastapi import FastAPI
-
-# source .venv/Scripts/activate
-# uvicorn api.main:app --reload
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-
 app = FastAPI()
+
+# Add CORSMiddleware to the application instance
+origins = [
+    "http://localhost:5173",  # Assuming your React app runs on this port; adjust if needed
+    "https://azure-feature-flags-web-app.azurewebsites.net/",  # Add other origins as needed
+    # Use "*" to allow all origins - be cautious with this in production
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # List of allowed origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Cosmos DB credentials
 url = os.getenv("COSMOS_DB_URL")
