@@ -10,11 +10,7 @@ load_dotenv()
 app = FastAPI()
 
 # Add CORSMiddleware to the application instance
-origins = [
-    "http://localhost:5173",  # Assuming your React app runs on this port; adjust if needed
-    "https://azure-feature-flags-web-app.azurewebsites.net/",  # Add other origins as needed
-    # Use "*" to allow all origins - be cautious with this in production
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
