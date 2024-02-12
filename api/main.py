@@ -1,5 +1,7 @@
+import json
 import os
 
+from azure.appconfiguration import AzureAppConfigurationClient
 from azure.cosmos import CosmosClient, exceptions
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -34,6 +36,9 @@ container_name = "flags"
 database = client.get_database_client(database_name)
 container = database.get_container_client(container_name)
 
+# app configuration connection
+app_configuration_connection_string = os.getenv("APP_CONFIGURATION_CONNECTION_STRING")
+
 
 class FeatureFlagsRequest(BaseModel):
     tenant: str
@@ -42,15 +47,6 @@ class FeatureFlagsRequest(BaseModel):
 @app.get("/")
 async def root():
     return {"message": "hello world"}
-
-
-@app.get("/data")
-async def get_data():
-    return [
-        {"_id": 1, "data": "data 1"},
-        {"_id": 2, "data": "data 2"},
-        {"_id": 3, "data": "data 3"},
-    ]
 
 
 @app.post("/config-cosmos")
@@ -84,3 +80,49 @@ async def get_feature_flags(request: FeatureFlagsRequest):
         result["configuration"] = config_items[0].get("configuration", [])
 
     return result
+
+
+@app.get("/config-app-config")
+async def get_all_app_config_settings():
+
+    client = AzureAppConfigurationClient.from_connection_string(
+        app_configuration_connection_string
+    )
+
+    try:
+
+        feature_flags = client.list_configuration_settings(
+            key_filter=".appconfig.featureflag/*"
+        )
+
+        feature_flags_list = []
+        for feature_flag in feature_flags:
+            parsed_value = json.loads(feature_flag.value)
+            flag = {
+                "key": feature_flag.key,
+                "value": parsed_value,
+                "label": feature_flag.label,
+            }
+            feature_flags_list.append(flag)
+
+        configs = client.list_configuration_settings(key_filter="*")
+
+        configs_list = []
+        for config in configs:
+            if not config.key.startswith(".appconfig.featureflag/"):
+                parsed_value = (
+                    json.loads(config.value)
+                    if config.value.startswith("[")
+                    else config.value
+                )
+                conf = {
+                    "key": config.key,
+                    "value": parsed_value,
+                    "label": config.label,
+                }
+                configs_list.append(conf)
+
+    except Exception as e:
+        return {"error": str(e)}
+
+    return {"featureFlags": feature_flags_list, "configurations": configs_list}

@@ -2,3 +2,4 @@ fastapi
 uvicorn[standard]
 azure-cosmos
 python-dotenv
+azure-appconfiguration
