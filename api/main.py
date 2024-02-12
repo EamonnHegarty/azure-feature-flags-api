@@ -34,9 +34,6 @@ container_name = "flags"
 database = client.get_database_client(database_name)
 container = database.get_container_client(container_name)
 
-# this would be got from the azure secret for tenant so be tenant ID that way we can return the results for a tenant
-# so EU would have one set of configs/flags and so on
-
 
 class FeatureFlagsRequest(BaseModel):
     tenant: str
@@ -56,17 +53,34 @@ async def get_data():
     ]
 
 
-@app.post("/feature-flags")
+@app.post("/config-cosmos")
 async def get_feature_flags(request: FeatureFlagsRequest):
     tenant = request.tenant
 
-    query = (
+    feature_flag_query = (
         f"SELECT c.id, f.flags FROM c JOIN f IN c.tenant WHERE f.tenant = '{tenant}'"
     )
-    items = list(container.query_items(query=query, enable_cross_partition_query=True))
-    return items
+    feature_flags = list(
+        container.query_items(
+            query=feature_flag_query, enable_cross_partition_query=True
+        )
+    )
 
+    config_container_name = "config"
+    config_container = database.get_container_client(config_container_name)
 
-@app.get("/modules")
-async def get_modules():
-    return ["modules"]
+    config_query = f"SELECT c.configuration FROM c WHERE c.tenant = '{tenant}'"
+    config_items = list(
+        config_container.query_items(
+            query=config_query, enable_cross_partition_query=True
+        )
+    )
+
+    result = {}
+
+    if feature_flags:
+        result["flags"] = feature_flags[0].get("flags", {})
+    if config_items:
+        result["configuration"] = config_items[0].get("configuration", [])
+
+    return result
